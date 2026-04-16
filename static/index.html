@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ads Generator Demo</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --primary: #0b5fff;
+      --primary-hover: #094ed2;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f8fbff 0%, #f3f6fb 100%);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 860px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+      padding: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+    }
+
+    .sub {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 13px;
+      color: #374151;
+      font-weight: 600;
+    }
+
+    input,
+    textarea {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s ease;
+      background: #fff;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: var(--primary);
+    }
+
+    textarea {
+      min-height: 220px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      line-height: 1.5;
+    }
+
+    .actions {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    button {
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:hover {
+      background: var(--primary-hover);
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--muted);
+      min-height: 18px;
+    }
+
+    @media (max-width: 700px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Ads Generator</h1>
+      <p class="sub">输入产品、受众和广告数量，点击提交后在下方查看生成结果。</p>
+
+      <form id="ads-form">
+        <div class="grid">
+          <div class="field">
+            <label for="product">Product</label>
+            <input id="product" name="product" type="text" placeholder="例如：智能运动手表" required />
+          </div>
+
+          <div class="field">
+            <label for="num_ads">Num Ads</label>
+            <input id="num_ads" name="num_ads" type="number" min="1" value="3" required />
+          </div>
+
+          <div class="field full">
+            <label for="audience">Audience</label>
+            <input id="audience" name="audience" type="text" placeholder="例如：25-35岁健身人群" required />
+          </div>
+
+          <div class="field full">
+            <label for="output">Output</label>
+            <textarea id="output" readonly placeholder="AI 生成的广告内容会显示在这里..."></textarea>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="submit-btn" type="submit">提交</button>
+          <div id="status" class="status"></div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("ads-form");
+    const output = document.getElementById("output");
+    const statusEl = document.getElementById("status");
+    const submitBtn = document.getElementById("submit-btn");
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    function appendOutput(text) {
+      output.value += text;
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function parseSSE(buffer, onEvent) {
+      const blocks = buffer.split("\n\n");
+      const completeBlocks = blocks.slice(0, -1);
+      const remain = blocks[blocks.length - 1] || "";
+
+      for (const block of completeBlocks) {
+        const lines = block.split("\n");
+        let eventName = "message";
+        let data = "";
+
+        for (const line of lines) {
+          if (line.startsWith("event:")) {
+            eventName = line.slice(6).trim();
+          } else if (line.startsWith("data:")) {
+            data += line.slice(5).trim();
+          }
+        }
+
+        if (data) {
+          onEvent(eventName, data);
+        }
+      }
+
+      return remain;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      output.value = "";
+
+      const payload = {
+        product: document.getElementById("product").value.trim(),
+        audience: document.getElementById("audience").value.trim(),
+        num_ads: Number(document.getElementById("num_ads").value),
+      };
+
+      if (!payload.product || !payload.audience || !payload.num_ads || payload.num_ads < 1) {
+        setStatus("请填写完整参数，且 num_ads 必须大于 0");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      setStatus("请求中...");
+
+      try {
+        const response = await fetch("/generate_ads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok || !response.body) {
+          const text = await response.text();
+          throw new Error(text || `请求失败，状态码 ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          buffer = parseSSE(buffer, (eventName, rawData) => {
+            let data;
+            try {
+              data = JSON.parse(rawData);
+            } catch {
+              return;
+            }
+
+            if (eventName === "meta") {
+              setStatus(`数据来源: ${data.source || "unknown"}`);
+            } else if (eventName === "delta") {
+              appendOutput(data.content || "");
+            } else if (eventName === "complete") {
+              if (Array.isArray(data.ads)) {
+                output.value = data.ads.map((item, index) => `${index + 1}. ${item}`).join("\n\n");
+              }
+              setStatus("生成完成");
+            } else if (eventName === "error") {
+              const detail = data.detail || "未知错误";
+              setStatus(`错误: ${detail}`);
+            }
+          });
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "请求异常";
+        setStatus(`请求失败: ${message}`);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

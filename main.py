@@ -1,8 +1,10 @@
 import json
+from pathlib import Path
 from typing import AsyncIterator
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from config import llm_config
@@ -17,6 +19,8 @@ from utils.llm import (
 )
 
 app = FastAPI(title="Ads Generator API")
+BASE_DIR = Path(__file__).resolve().parent
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 
 class GenerateAdsRequest(BaseModel):
@@ -27,6 +31,11 @@ class GenerateAdsRequest(BaseModel):
 
 def _to_sse(event: str, payload: dict[str, object]) -> str:
     return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=True)}\n\n"
+
+
+@app.get("/")
+async def index() -> FileResponse:
+    return FileResponse(BASE_DIR / "static" / "index.html")
 
 
 @app.post("/generate_ads")

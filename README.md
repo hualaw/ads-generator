@@ -65,6 +65,8 @@ data: {"ads":["文案1","文案2","文案3"]}
   - LLM 与 Redis 配置定义
 - `prompts.py`
   - 系统提示词与用户提示词模板
+- `static/index.html`
+  - 手工验证页面（输入参数并查看广告生成结果）
 - `utils/llm.py`
   - LLM 调用与 fallback 逻辑
   - Redis 缓存读写
@@ -135,8 +137,21 @@ uvicorn main:app --reload
 ```
 
 启动后可访问：
+- 首页验证页：`http://127.0.0.1:8000/`
+- 静态验证页：`http://127.0.0.1:8000/static/index.html`
 - Swagger 文档：`http://127.0.0.1:8000/docs`
 - OpenAPI：`http://127.0.0.1:8000/openapi.json`
+
+### 7.5 通过 `/static/index.html` 验证广告生成效果
+
+1. 打开：`http://127.0.0.1:8000/static/index.html`
+2. 填写三个入参：`product`、`audience`、`num_ads`
+3. 点击“提交”
+4. 在页面下方 `Output` 文本框查看生成结果
+
+说明：
+- 页面会调用 `POST /generate_ads` 接口
+- 输出会先展示流式片段，接口完成后显示最终广告列表
 
 ## 8. 异常与可观测性
 
