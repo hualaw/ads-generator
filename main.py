@@ -43,7 +43,7 @@ async def generate_ads(request: GenerateAdsRequest) -> StreamingResponse:
     )
 
     async def event_stream() -> AsyncIterator[str]:
-        cached_output = get_cached_llm_output(user_prompt, llm_config.primary_model)
+        cached_output = get_cached_llm_output(SYSTEM_PROMPT, user_prompt)
         if cached_output:
             try:
                 ads = output_parse(cached_output, request.num_ads)
@@ -63,7 +63,7 @@ async def generate_ads(request: GenerateAdsRequest) -> StreamingResponse:
 
             llm_output = "".join(llm_output_chunks).strip()
             ads = output_parse(llm_output, request.num_ads)
-            set_cached_llm_output(user_prompt, llm_config.primary_model, llm_output)
+            set_cached_llm_output(SYSTEM_PROMPT, user_prompt, llm_output)
             yield _to_sse("complete", {"ads": ads[: request.num_ads]})
         except HTTPException as e:
             log_event("error", "generate_ads_stream_failed", status_code=e.status_code, detail=e.detail)

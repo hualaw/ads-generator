@@ -24,30 +24,30 @@ redis_client = redis.Redis(
     decode_responses=True,
 )
 
-def _get_cache_key(prompt: str, model: str) -> str:
-    """Generate cache key from prompt and model name."""
-    combined = f"{prompt}::{model}"
+def _get_cache_key(system_prompt: str, user_prompt: str) -> str:
+    """Generate cache key from system_prompt and user_prompt."""
+    combined = f"{system_prompt}::{user_prompt}"
     return hashlib.sha256(combined.encode()).hexdigest()
 
 
-def get_cached_llm_output(prompt: str, model: str) -> str | None:
+def get_cached_llm_output(system_prompt: str, user_prompt: str) -> str | None:
     """Retrieve LLM output from Redis cache."""
     try:
-        cache_key = _get_cache_key(prompt, model)
+        cache_key = _get_cache_key(system_prompt, user_prompt)
         cached = redis_client.get(cache_key)
         return cached if isinstance(cached, str) else None
     except Exception:
-        log_exception("redis_cache_get_failed", model=model)
+        log_exception("redis_cache_get_failed")
         return None
 
 
-def set_cached_llm_output(prompt: str, model: str, output: str) -> None:
+def set_cached_llm_output(system_prompt: str, user_prompt: str, output: str) -> None:
     """Store LLM output to Redis cache."""
     try:
-        cache_key = _get_cache_key(prompt, model)
+        cache_key = _get_cache_key(system_prompt, user_prompt)
         redis_client.setex(cache_key, redis_config.ttl_seconds, output)
     except Exception:
-        log_exception("redis_cache_set_failed", model=model, ttl_seconds=redis_config.ttl_seconds)
+        log_exception("redis_cache_set_failed", ttl_seconds=redis_config.ttl_seconds)
 
 
 def output_parse(llm_output: str, num_ads: int) -> list[str]:
