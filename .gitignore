@@ -11,3 +11,6 @@ __pycache__/
 .vscode/
 
 *.log
+
+# Local working artifacts
+COMMIT_CHECKLIST.md

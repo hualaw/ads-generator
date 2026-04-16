@@ -59,15 +59,19 @@ data: {"ads":["文案1","文案2","文案3"]}
 - `main.py`
   - FastAPI 应用入口
   - `/generate_ads` 主流程
-  - Redis 缓存读写
-  - LLM 主模型与降级模型调用
-  - SSE 事件输出
-  - 日志与异常处理
+  - SSE 事件编排与响应输出
 - `config.py`
   - 环境变量读取
   - LLM 与 Redis 配置定义
 - `prompts.py`
   - 系统提示词与用户提示词模板
+- `utils/llm.py`
+  - LLM 调用与 fallback 逻辑
+  - Redis 缓存读写
+  - 输出解析与 token 截断
+- `utils/log.py`
+  - 统一日志初始化
+  - 结构化日志输出与异常日志
 - `requirements.txt`
   - 运行依赖
 
